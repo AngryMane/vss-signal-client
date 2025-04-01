@@ -40,4 +40,7 @@ target_link_libraries(${CLIENT_NAME} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 set_target_properties(${CLIENT_NAME} PROPERTIES PUBLIC_HEADER "inc/signal-client.h")
 
 # configure install
-install(TARGETS ${CLIENT_NAME} DESTINATION ${REPOSITORY_INSTALL_DIR})
+install(TARGETS ${CLIENT_NAME} 
+    LIBRARY DESTINATION ${CMAKE_SOURCE_DIR}/out
+    ARCHIVE DESTINATION ${CMAKE_SOURCE_DIR}/out
+)

@@ -18,4 +18,15 @@ target_include_directories(sample-app PRIVATE ${Boost_INCLUDE_DIRS})
 target_include_directories(sample-app PRIVATE ${OPENSSL_INCLUDE_DIR})
 
 # Add dependency on vss-signal-client
-add_dependencies(sample-app vss-signal-client) 
+add_dependencies(sample-app vss-signal-client)
+
+# Install binary to out directory
+install(TARGETS sample-app
+    RUNTIME DESTINATION ${CMAKE_SOURCE_DIR}/out
+)
+
+# Set rpath to find the shared library
+set_target_properties(sample-app PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "${CMAKE_SOURCE_DIR}/out"
+) 

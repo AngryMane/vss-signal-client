@@ -20,10 +20,12 @@ SignalClientImpl::SignalClientImpl(const std::string &host, const std::string &p
     , connection_hdl_()
     , mutex_()
     , subscribers_()
+    , is_connected_(false)
 {
     endpoint_->init_asio();
     endpoint_->set_open_handler(bind(&SignalClientImpl::on_open, this, _1));
     endpoint_->set_message_handler(bind(&SignalClientImpl::on_message, this, _1, _2));
+    endpoint_->set_close_handler(bind(&SignalClientImpl::on_close, this, _1));
 }
 
 SignalClientImpl::~SignalClientImpl() {
@@ -31,36 +33,63 @@ SignalClientImpl::~SignalClientImpl() {
 }
 
 bool SignalClientImpl::connect() {
+    if (is_connected_) {
+        return true;
+    }
+
     websocketpp::lib::error_code ec;
     std::string uri = "ws://" + host_ + ":" + port_;
     
     Client::connection_ptr con = endpoint_->get_connection(uri, ec);
     if (ec) {
+        std::cerr << "接続エラー: " << ec.message() << std::endl;
         return false;
     }
 
     connection_hdl_ = con->get_handle();
     endpoint_->connect(con);
 
+    // 別スレッドでWebSocket接続を実行
     endpoint_thread_ = std::thread([this]() {
-        endpoint_->run();
+        try {
+            endpoint_->run();
+        } catch (const std::exception& e) {
+            std::cerr << "WebSocket実行エラー: " << e.what() << std::endl;
+        }
     });
 
-    return true;
+    // 接続が確立されるまで待機
+    std::unique_lock<std::mutex> lock(mutex_);
+    connection_cv_.wait_for(lock, std::chrono::seconds(5), [this]() { return is_connected_; });
+
+    return is_connected_;
 }
 
 bool SignalClientImpl::disconnect() {
+    if (!is_connected_) {
+        return true;
+    }
+
     if (endpoint_) {
         endpoint_->close(connection_hdl_, websocketpp::close::status::normal, "");
         if (endpoint_thread_.joinable()) {
             endpoint_thread_.join();
         }
+        is_connected_ = false;
     }
     return true;
 }
 
 void SignalClientImpl::on_open(websocketpp::connection_hdl hdl) {
+    std::lock_guard<std::mutex> lock(mutex_);
     connection_hdl_ = hdl;
+    is_connected_ = true;
+    connection_cv_.notify_one();
+}
+
+void SignalClientImpl::on_close(websocketpp::connection_hdl hdl) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    is_connected_ = false;
 }
 
 void SignalClientImpl::on_message(websocketpp::connection_hdl hdl, Client::message_ptr msg) {

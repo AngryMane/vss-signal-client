@@ -77,16 +77,17 @@ public:
 private:
 
     std::string host_;
-
     std::string port_;
-
     std::unique_ptr<websocketpp::client<websocketpp::config::asio_client>> endpoint_;
     websocketpp::connection_hdl connection_hdl_;
     std::mutex mutex_;
     std::map<std::string, std::function<void(const std::string&)>> subscribers_;
     std::thread endpoint_thread_;
+    bool is_connected_;
+    std::condition_variable connection_cv_;
 
     void on_open(websocketpp::connection_hdl hdl);
+    void on_close(websocketpp::connection_hdl hdl);
     void on_message(websocketpp::connection_hdl hdl, websocketpp::client<websocketpp::config::asio_client>::message_ptr msg);
     std::string generate_request_id();
 };
