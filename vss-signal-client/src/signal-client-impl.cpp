@@ -96,8 +96,8 @@ void SignalClientImpl::on_message(websocketpp::connection_hdl hdl, Client::messa
     try {
         json j = json::parse(msg->get_payload());
         
-        if (j.contains(Constants::viss::SUBSCRIPTION_ID_TAG)) {
-            std::string subscription_id = j[Constants::viss::SUBSCRIPTION_ID_TAG];
+        if (j.contains(Constants::viss::REQUEST_ID_TAG)) {
+            std::string subscription_id = j[Constants::viss::REQUEST_ID_TAG];
             std::lock_guard<std::mutex> lock(mutex_);
             auto it = subscribers_.find(subscription_id);
             if (it != subscribers_.end()) {
